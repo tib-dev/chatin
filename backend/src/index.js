@@ -1,5 +1,6 @@
 import express from "express";
 import authRouter from "./routes/auth.route.js";
+import messagesRouter from "./routes/messages.route.js";
 import { connectDB } from "./lib/db.config.js";
 import dotenv from "dotenv";
 import CookieParser from "cookie-parser";
@@ -11,6 +12,7 @@ app.use(express.json());
 app.use(express.json()); // Ensure JSON body parsing
 app.use(CookieParser()); // Ensure cookies are parsed
 app.use("/api/auth", authRouter);
+app.use("/api/messages", messagesRouter);
 
 const startServer = async () => {
   try {
