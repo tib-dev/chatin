@@ -1,18 +1,19 @@
 import express from "express";
-import authRouter from "./routes/auth.route.js";
-import messagesRouter from "./routes/messages.route.js";
 import { connectDB } from "./lib/db.config.js";
 import dotenv from "dotenv";
 import CookieParser from "cookie-parser";
+import cors from "cors";
+import { corsOptions } from "./lib/cors.config.js";
+import router from "./routes/index.js";
 dotenv.config();
 const port = process.env.PORT || 5000;
 const app = express();
-app.use(express.json());
+
 // Middleware
+app.use(cors(corsOptions)); // Ensure CORS is allowed
 app.use(express.json()); // Ensure JSON body parsing
 app.use(CookieParser()); // Ensure cookies are parsed
-app.use("/api/auth", authRouter);
-app.use("/api/messages", messagesRouter);
+app.use(router);
 
 const startServer = async () => {
   try {
