@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Camera, Mail, User } from "lucide-react";
 import { useUpdateProfileMutation } from "../Store/Slice/authApiSlice";
+import { useCheckAuthQuery } from "../Store/Slice/authApiSlice";
 
 const Profile = () => {
-  const { authUser, isUpdatingProfile, updateProfile } =   useUpdateProfileMutation();
+  const { data: authUser } = useCheckAuthQuery(); // Fetch user data
+  const [updateProfile, { isLoading: isUpdatingProfile }] =
+    useUpdateProfileMutation();
   const [selectedImg, setSelectedImg] = useState(null);
 
   const handleImageUpload = async (e) => {
@@ -11,13 +14,16 @@ const Profile = () => {
     if (!file) return;
 
     const reader = new FileReader();
-
     reader.readAsDataURL(file);
 
     reader.onload = async () => {
       const base64Image = reader.result;
       setSelectedImg(base64Image);
-      await updateProfile({ profilePic: base64Image });
+      try {
+        await updateProfile({ profilePic: base64Image });
+      } catch (error) {
+        console.error("Update Profile Error:", error);
+      }
     };
   };
 
@@ -26,30 +32,23 @@ const Profile = () => {
       <div className="max-w-2xl mx-auto p-4 py-8">
         <div className="bg-base-300 rounded-xl p-6 space-y-8">
           <div className="text-center">
-            <h1 className="text-2xl font-semibold ">Profile</h1>
+            <h1 className="text-2xl font-semibold">Profile</h1>
             <p className="mt-2">Your profile information</p>
           </div>
 
-          {/* avatar upload section */}
-
+          {/* Avatar upload section */}
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <img
-                src={selectedImg || authUser.profilePic || "/avatar.png"}
+                src={selectedImg || authUser?.profilePic || "/avatar.png"}
                 alt="Profile"
-                className="size-32 rounded-full object-cover border-4 "
+                className="size-32 rounded-full object-cover border-4"
               />
               <label
                 htmlFor="avatar-upload"
-                className={`
-                  absolute bottom-0 right-0 
-                  bg-base-content hover:scale-105
-                  p-2 rounded-full cursor-pointer 
-                  transition-all duration-200
-                  ${
-                    isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
-                  }
-                `}
+                className={`absolute bottom-0 right-0 bg-base-content hover:scale-105 p-2 rounded-full cursor-pointer transition-all duration-200 ${
+                  isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
+                }`}
               >
                 <Camera className="w-5 h-5 text-base-200" />
                 <input
@@ -69,6 +68,7 @@ const Profile = () => {
             </p>
           </div>
 
+          {/* User Info Section */}
           <div className="space-y-6">
             <div className="space-y-1.5">
               <div className="text-sm text-zinc-400 flex items-center gap-2">
@@ -76,7 +76,7 @@ const Profile = () => {
                 Full Name
               </div>
               <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
-                {authUser?.fullName}
+                {authUser?.fullName || "N/A"}
               </p>
             </div>
 
@@ -86,17 +86,18 @@ const Profile = () => {
                 Email Address
               </div>
               <p className="px-4 py-2.5 bg-base-200 rounded-lg border">
-                {authUser?.email}
+                {authUser?.email || "N/A"}
               </p>
             </div>
           </div>
 
+          {/* Account Info Section */}
           <div className="mt-6 bg-base-300 rounded-xl p-6">
-            <h2 className="text-lg font-medium  mb-4">Account Information</h2>
+            <h2 className="text-lg font-medium mb-4">Account Information</h2>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between py-2 border-b border-zinc-700">
                 <span>Member Since</span>
-                <span>{authUser.createdAt?.split("T")[0]}</span>
+                <span>{authUser?.createdAt?.split("T")[0] || "Unknown"}</span>
               </div>
               <div className="flex items-center justify-between py-2">
                 <span>Account Status</span>

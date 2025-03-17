@@ -6,6 +6,14 @@ export const authApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: import.meta.env.VITE_API_URL,
     credentials: "include",
+    prepareHeaders: (headers, { getState }) => {
+      const token = getState().auth.accessToken;
+      console.log(token)
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   endpoints: (builder) => ({
     signup: builder.mutation({
@@ -56,9 +64,21 @@ export const authApi = createApi({
     updateProfile: builder.mutation({
       query: (profileData) => ({
         url: "/auth/update-profile",
-        method: "PATCH",
+        method: "PUT",
         body: profileData,
       }),
+      async onQueryStarted(profileData, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            authApi.util.updateQueryData("checkAuth", undefined, (draft) => {
+              Object.assign(draft, data); // Update authUser state
+            })
+          );
+        } catch (error) {
+          console.error("Update Profile Error:", error);
+        }
+      },
     }),
     checkAuth: builder.query({
       query: () => "/auth/check",
