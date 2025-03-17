@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { useLoginMutation } from "../Store/Slice/authApiSlice";
 import { setAccessToken } from "../Store/Slice/authSlice";
-import toast from "react-hot-toast";
+import toast, { ToastBar, Toaster } from "react-hot-toast";
 
 import AuthImagePattern from "../components/AuthImagePattern";
 import { Link } from "react-router-dom";
@@ -31,6 +31,7 @@ const Login = () => {
 
   return (
     <div className="h-screen grid lg:grid-cols-2">
+      <Toaster />
       {/* Left Side - Form */}
       <div className="flex flex-col justify-center items-center p-6 sm:p-12">
         <div className="w-full max-w-md space-y-8">

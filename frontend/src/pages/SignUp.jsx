@@ -83,7 +83,7 @@ const SignUp = () => {
                 <input
                   type="text"
                   name="fullName"
-                  className="input input-bordered w-full pl-10"
+                  className="py-1 input input-bordered w-full pl-10 rounded-md border border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                   placeholder="John Doe"
                   value={formData.fullName}
                   onChange={(e) =>
@@ -105,8 +105,8 @@ const SignUp = () => {
                 <input
                   type="email"
                   name="email"
-                  className="input input-bordered w-full pl-10"
-                  placeholder="you@example.com"
+                  className=" py-1 input input-bordered w-full pl-10 rounded-md border border-gray-600 focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                  placeholder="joe@email.com"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
@@ -117,8 +117,8 @@ const SignUp = () => {
 
             {/* Password */}
             <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Password</span>
+              <label className="label ">
+                <span className=" label-text font-medium">Password</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -127,7 +127,8 @@ const SignUp = () => {
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  className="input input-bordered w-full pl-10"
+                  className=" py-1 input input-bordered w-full pl-10 rounded-md border border-gray-600 
+  focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) =>

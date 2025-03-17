@@ -1,6 +1,5 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import './app.css'
 import { useSelector } from "react-redux";
 import Profile from "./pages/Profile";
 import SignUp from "./pages/SignUp";
@@ -8,6 +7,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Navbar from "./components/Navbar";
 import Settings from "./pages/Settings";
+
 //
 
 const PrivateRoute = ({ element }) => {

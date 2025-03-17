@@ -1,7 +1,13 @@
 import { cloudinaryConfig } from "../lib/cloudnary.js";
-import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
+import { generateTokens } from "../lib/utils.js";
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "Strict",
+  maxAge: 60 * 60 * 1000, // 1 hour expiration
+};
 
 // Sign up user
 export const signup = async (req, res) => {
@@ -35,7 +41,7 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: "Invalid user data" });
     }
 
-    generateToken(newUser._id, res);
+    generateTokens(newUser._id, res);
     await newUser.save();
     res.status(201).json({
       _id: newUser._id,
@@ -49,40 +55,84 @@ export const signup = async (req, res) => {
   }
 };
 
-// Sign in user
+// User Login
 export const login = async (req, res) => {
-  const { email, password } = req.body;
   try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Invalid Credentials" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      return res.status(400).json({ message: "Invalid Credentials" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    generateToken(user._id, res);
-    res.status(200).json({
-      _id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      profilePic: user.profilePic,
-    });
+    const { accessToken, refreshToken } = await generateTokens(user);
+    res.cookie("refreshToken", refreshToken, cookieOptions);
+    res.json({ accessToken });
   } catch (error) {
-    console.log("Error in login controller:", error.message);
+    console.error("Login Error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-// Logout user
+// Refresh Token (Token Rotation)
+export const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.cookies;
+    if (!refreshToken) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    } catch (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+
+    const user = await User.findById(decoded.user_id);
+    if (!user || !user.refreshToken) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+
+    const isTokenValid = await bcrypt.compare(refreshToken, user.refreshToken);
+    if (!isTokenValid) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+
+    const newTokens = await generateTokens(user);
+    res.cookie("refreshToken", newTokens.refreshToken, cookieOptions);
+    console.log(
+      res.cookie("refreshToken", newTokens.refreshToken, cookieOptions)
+    );
+    res.json({ accessToken: newTokens.accessToken });
+  } catch (error) {
+    console.error("Refresh Token Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// Logout (Clear refresh token)
 export const logout = async (req, res) => {
   try {
-    res.cookie("jwt", "", { maxAge: 0 });
-    res.status(200).json({ message: "Logout Successfully" });
+    const { refreshToken } = req.cookies;
+    if (refreshToken) {
+      await User.updateOne({ refreshToken }, { $unset: { refreshToken: "" } });
+    }
+
+    res.clearCookie("refreshToken", { ...cookieOptions, expires: new Date(0) });
+    res.json({ message: "Logged out successfully" });
   } catch (error) {
-    console.log("Error in logout controller:", error.message);
+    console.error("Logout Error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
