@@ -1,7 +1,8 @@
-import { cloudinaryConfig } from "../lib/cloudnary.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { generateTokens } from "../lib/utils.js";
+import cloudinary from "../lib/cloudnary.js";
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -9,10 +10,11 @@ const cookieOptions = {
   maxAge: 60 * 60 * 1000, // 1 hour expiration
 };
 
-// Sign up user
+// 🔹 Sign Up User
 export const signup = async (req, res) => {
-  const { fullName, email, password } = req.body;
   try {
+    const { fullName, email, password } = req.body;
+
     if (!fullName || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -23,42 +25,43 @@ export const signup = async (req, res) => {
         .json({ message: "Password must be at least 6 characters" });
     }
 
-    const user = await User.findOne({ email });
-    if (user) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
+    const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       fullName,
       email,
       password: hashedPassword,
     });
 
-    if (!newUser) {
-      return res.status(400).json({ message: "Invalid user data" });
-    }
-
-    generateTokens(newUser._id, res);
     await newUser.save();
+
+    // 🔹 Generate Tokens
+    const { accessToken, refreshToken } = await generateTokens(newUser._id);
+    await User.findByIdAndUpdate(newUser._id, { refreshToken });
+
+    res.cookie("refreshToken", refreshToken, cookieOptions);
     res.status(201).json({
       _id: newUser._id,
       fullName: newUser.fullName,
       email: newUser.email,
       profilePic: newUser.profilePic,
+      accessToken,
     });
   } catch (error) {
-    console.log("Error in sign up controller:", error.message);
+    console.error("Sign-up Error:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-// User Login
+// 🔹 User Login
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
       return res
         .status(400)
@@ -66,25 +69,23 @@ export const login = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+    // 🔹 Generate Tokens
+    const { accessToken, refreshToken } = await generateTokens(user._id);
+    await User.findByIdAndUpdate(user._id, { refreshToken });
 
-    const { accessToken, refreshToken } = await generateTokens(user);
     res.cookie("refreshToken", refreshToken, cookieOptions);
     res.json({ accessToken });
   } catch (error) {
-    console.error("Login Error:", error);
+    console.error("Login Error:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-// Refresh Token (Token Rotation)
+// 🔹 Refresh Token (Token Rotation)
 export const refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.cookies;
@@ -92,36 +93,27 @@ export const refreshToken = async (req, res) => {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    let decoded;
-    try {
-      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    } catch (err) {
-      return res.status(403).json({ message: "Invalid token" });
-    }
-
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.user_id);
-    if (!user || !user.refreshToken) {
+    if (!user || user.refreshToken !== refreshToken) {
       return res.status(403).json({ message: "Invalid token" });
     }
 
-    const isTokenValid = await bcrypt.compare(refreshToken, user.refreshToken);
-    if (!isTokenValid) {
-      return res.status(403).json({ message: "Invalid token" });
-    }
+    // 🔹 Generate new tokens
+    const newTokens = await generateTokens(user._id);
+    await User.findByIdAndUpdate(user._id, {
+      refreshToken: newTokens.refreshToken,
+    });
 
-    const newTokens = await generateTokens(user);
     res.cookie("refreshToken", newTokens.refreshToken, cookieOptions);
-    console.log(
-      res.cookie("refreshToken", newTokens.refreshToken, cookieOptions)
-    );
     res.json({ accessToken: newTokens.accessToken });
   } catch (error) {
-    console.error("Refresh Token Error:", error);
+    console.error("Refresh Token Error:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-// Logout (Clear refresh token)
+// 🔹 Logout (Clear refresh token)
 export const logout = async (req, res) => {
   try {
     const { refreshToken } = req.cookies;
@@ -132,12 +124,12 @@ export const logout = async (req, res) => {
     res.clearCookie("refreshToken", { ...cookieOptions, expires: new Date(0) });
     res.json({ message: "Logged out successfully" });
   } catch (error) {
-    console.error("Logout Error:", error);
+    console.error("Logout Error:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-// update user
+// 🔹 Update User Profile
 export const updateProfile = async (req, res) => {
   try {
     const { profilePic } = req.body;
@@ -147,29 +139,29 @@ export const updateProfile = async (req, res) => {
       return res.status(400).json({ message: "Profile picture is required" });
     }
 
-    // Upload image to Cloudinary
-    const updateResponse = await cloudinaryConfig.uploader.upload(profilePic);
+    // 🔹 Upload image to Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(profilePic);
 
-    // Update user profile picture
+    // 🔹 Update profile picture
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profilePic: updateResponse.secure_url },
+      { profilePic: uploadResponse.secure_url },
       { new: true }
     );
 
-    // Return updated user data
     res.status(200).json(updatedUser);
   } catch (error) {
-    console.log("Error in update user controller:", error.message);
+    console.error("Update Profile Error:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-// Check
+
+// 🔹 Check Authentication
 export const checkAuth = (req, res) => {
   try {
     res.status(200).json(req.user);
-  } catch {
-    console.log("Error in check controller:", error.message);
+  } catch (error) {
+    console.error("Check Auth Error:", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
