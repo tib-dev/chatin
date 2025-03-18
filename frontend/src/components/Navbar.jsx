@@ -2,12 +2,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { LogOut, MessageSquare, Settings, User } from "lucide-react";
 import { setAccessToken } from "../Store/Slice/authSlice"; // Import logout action
+import { useCheckAuthQuery } from "../Store/Slice/authApiSlice";
 
 const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const authUser = useSelector((state) => state.auth.accessToken); // Fetch from Redux state
-
+  const user = useSelector((state) => state.auth.accessToken); // Fetch from Redux state
+  const { data: authUser } = useCheckAuthQuery();
   const logout = () => {
     dispatch(setAccessToken(null)); // Clear token from Redux
     navigate("/login"); // Redirect without full reload
@@ -39,10 +40,14 @@ const Navbar = () => {
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Settings</span>
             </Link>
-            {authUser && (
+            {user && (
               <>
                 <Link to="/profile" className="btn btn-sm gap-2">
-                  <User className="size-5" />
+                  <div className="avatar avatar-online size-5">
+                    <div className="w-24 rounded-full">
+                      <img src={authUser?.profilePic} />
+                    </div>
+                  </div>
                   <span className="hidden sm:inline">Profile</span>
                 </Link>
 
