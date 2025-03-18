@@ -8,8 +8,6 @@ import Home from "./pages/Home";
 import Navbar from "./components/Navbar";
 import Settings from "./pages/Settings";
 
-//
-
 const PrivateRoute = ({ element }) => {
   const accessToken = useSelector((state) => state.auth.accessToken);
   return accessToken ? element : <Navigate to="/login" replace />;
@@ -21,8 +19,10 @@ const AuthRoute = ({ element }) => {
 };
 
 const App = () => {
+  const theme = useSelector((state) => state.theme.payload);
+  console.log(theme)
   return (
-    <div>
+    <div data-theme={theme}>
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />

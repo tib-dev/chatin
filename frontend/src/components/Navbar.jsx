@@ -1,15 +1,16 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { LogOut, MessageSquare, Settings, User } from "lucide-react";
 import { setAccessToken } from "../Store/Slice/authSlice"; // Import logout action
 
 const Navbar = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const authUser = useSelector((state) => state.auth.accessToken); // Fetch from Redux state
 
   const logout = () => {
     dispatch(setAccessToken(null)); // Clear token from Redux
-    window.location.href = "/login"; // Redirect to login page
+    navigate("/login"); // Redirect without full reload
   };
 
   return (
@@ -19,6 +20,7 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-4 h-16">
         <div className="flex items-center justify-between h-full">
+          {/* Logo Section */}
           <div className="flex items-center gap-8">
             <Link
               to="/"
@@ -31,23 +33,23 @@ const Navbar = () => {
             </Link>
           </div>
 
+          {/* Right Section (Theme Toggle + Buttons) */}
           <div className="flex items-center gap-2">
-            <Link
-              to={"/settings"}
-              className="btn btn-sm gap-2 transition-colors"
-            >
+            <Link to="/settings" className="btn btn-sm gap-2 transition-colors">
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Settings</span>
             </Link>
-
             {authUser && (
               <>
-                <Link to={"/profile"} className="btn btn-sm gap-2">
+                <Link to="/profile" className="btn btn-sm gap-2">
                   <User className="size-5" />
                   <span className="hidden sm:inline">Profile</span>
                 </Link>
 
-                <button className="flex gap-2 items-center" onClick={logout}>
+                <button
+                  className="btn btn-sm gap-2 bg-error text-error-content hover:bg-error/80"
+                  onClick={logout}
+                >
                   <LogOut className="size-5" />
                   <span className="hidden sm:inline">Logout</span>
                 </button>
